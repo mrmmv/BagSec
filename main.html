@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bag Security System</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCvxb2J5o_3F9IAm50OO7LsVzETGjNQClg&libraries=places"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    /* General Styles */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      background-color: #f4f4f9;
+      color: #333;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      text-align: center;
+      background-color: #0078d7;
+      color: white;
+      padding: 15px;
+      margin: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      position: relative;
+    }
+
+    h1 img {
+      height: 40px;
+      width: auto;
+    }
+
+    .menu-button {
+      position: absolute;
+      left: 20px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .slide-menu {
+      position: fixed;
+      top: 0;
+      left: -300px;
+      width: 250px;
+      height: 100%;
+      background-color: #fff;
+      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+      transition: left 0.3s ease;
+      z-index: 1000;
+    }
+
+    .slide-menu.open {
+      left: 0;
+    }
+
+    .slide-menu button {
+      display: block;
+      width: 100%;
+      padding: 15px 20px;
+      text-align: left;
+      font-size: 16px;
+      border: none;
+      background-color: white;
+      color: #333;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .slide-menu button:hover {
+      background-color: #f1f1f1;
+    }
+
+    .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+    }
+
+    .overlay.active {
+      display: block;
+    }
+
+    .popup-container {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 1001;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .popup-container.active {
+      display: block;
+    }
+
+    .popup-container img {
+      width: 100%;
+      max-width: 150px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .popup-container p {
+      margin: 10px 0;
+      text-align: left;
+    }
+
+    .popup-container button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      background-color: #0078d7;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .popup-container button:hover {
+      background-color: #005bb5;
+    }
+
+    .container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 90%;
+      max-width: 1200px;
+      margin: 20px 0;
+      flex-grow: 1;
+    }
+
+    .map-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+    }
+
+    #map {
+      height: 300px;
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    #street-view {
+      height: 300px;
+      width: 100%;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background-color: #0078d7;
+      color: white;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    button:hover {
+      background-color: #005bb5;
+      transform: translateY(-2px);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    #status {
+      text-align: center;
+      font-size: 18px;
+      padding: 15px;
+      background-color: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    footer {
+      text-align: center;
+      padding: 15px;
+      background-color: #0078d7;
+      color: white;
+      width: 100%;
+      margin-top: auto;
+      box-shadow: 0 -4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 24px;
+        padding: 10px;
+      }
+
+      h1 img {
+        height: 30px;
+      }
+
+      .menu-button {
+        left: 10px;
+        font-size: 20px;
+      }
+
+      .slide-menu {
+        width: 200px;
+      }
+
+      button {
+        width: 100%;
+        margin: 5px 0;
+        padding: 10px 20px;
+      }
+
+      #map, #street-view {
+        height: 200px;
+      }
+
+      #status {
+        font-size: 16px;
+        padding: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>
+    <button class="menu-button" onclick="toggleSlideMenu()">
+      <i class="fas fa-bars"></i>
+    </button>
+    <img src="src/logo.png" alt="BagSec Logo"> Bag Security System
+  </h1>
+
+  <!-- Slide-Out Menu -->
+  <div class="slide-menu" id="slideMenu">
+    <button onclick="showAuthorInfo()">
+      <i class="fas fa-user"></i> Author Info
+    </button>
+    <button onclick="showInstructions()">
+      <i class="fas fa-info-circle"></i> Instructions
+    </button>
+    <button onclick="logout()">
+      <i class="fas fa-sign-out-alt"></i> Logout
+    </button>
+  </div>
+
+  <!-- Overlay for Slide Menu -->
+  <div class="overlay" id="overlay" onclick="toggleSlideMenu()"></div>
+
+  <!-- Pop-Up Containers -->
+  <div class="popup-container" id="authorInfoPopup">
+    <img src="src/man.jfif" alt="Author Picture">
+    <p><strong>Author:</strong> Sean Paul Baculo Atienza</p>
+    <p><strong>Email:</strong> atienzaseanpaul@gmail.com</p>
+    <p><strong>About:</strong> A 15-year-old student researcher and academic achiever with a passion for robotics, driven by curiosity and a desire to push the boundaries of technology.</p>
+    <button onclick="closePopup('authorInfoPopup')">Close</button>
+  </div>
+
+  <div class="popup-container" id="instructionsPopup">
+    <h2>Instructions</h2>
+    <p><strong>1. Lock/Unlock:</strong> Use the Lock and Unlock buttons to secure your bag.</p>
+    <p><strong>2. Anti-Theft:</strong> Activate Anti-Theft to enable geofencing. The buzzer will sound if the bag moves more than 10 meters away.</p>
+    <p><strong>3. Location Tracking:</strong> The map shows the real-time location of your bag.</p>
+    <p><strong>4. Street View:</strong> Check the Street View to see the exact location of your bag.</p>
+    <p><strong>5. SMS Commands:</strong> Send 'Get Location' to the device to receive its coordinates via SMS.</p>
+    <button onclick="closePopup('instructionsPopup')">Close</button>
+  </div>
+
+  <!-- Main Content -->
+  <div class="container">
+    <div class="map-container">
+      <div id="map"></div>
+      <div id="street-view"></div>
+    </div>
+    <div class="button-container">
+      <button id="lockBtn">
+        <i class="fas fa-lock"></i> Lock
+      </button>
+      <button id="unlockBtn">
+        <i class="fas fa-unlock"></i> Unlock
+      </button>
+      <button id="antiTheftBtn">
+        <i class="fas fa-shield-alt"></i> Activate Anti-Theft
+      </button>
+    </div>
+    <p id="status">Status: Idle</p>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    Powered by: BagSec ©2025
+  </footer>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAoqkAgvJvbxvzv3VTI947xLK2VV01Mj7I",
+  authDomain: "bagsec-b7850.firebaseapp.com",
+  databaseURL: "https://bagsec-b7850-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "bagsec-b7850",
+  storageBucket: "bagsec-b7850.firebasestorage.app",
+  messagingSenderId: "6655205519",
+  appId: "1:6655205519:web:8f8ed4c4a37f1304e8d0fa"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // Google Maps initialization
+    let map;
+    let streetView;
+    let marker;
+    let ownerLocation = { lat: 0, lng: 0 }; // Owner's location
+    let bagLocation = { lat: 0, lng: 0 }; // Bag's location
+    let antiTheftActive = false; // Anti-theft status
+
+    function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 0, lng: 0 },
+        zoom: 15,
+      });
+
+      streetView = new google.maps.StreetViewPanorama(
+        document.getElementById("street-view"),
+        {
+          position: { lat: 0, lng: 0 },
+          pov: { heading: 165, pitch: 0 },
+          zoom: 1,
+        }
+      );
+
+      marker = new google.maps.Marker({
+        position: bagLocation,
+        map: map,
+        title: "Bag Location",
+      });
+
+      // Listen for changes in Firebase for bag location
+      database.ref("bagLocation").on("value", (snapshot) => {
+        const location = snapshot.val();
+        if (location) {
+          bagLocation = { lat: location.lat, lng: location.lng };
+          marker.setPosition(bagLocation);
+          map.setCenter(bagLocation);
+          streetView.setPosition(bagLocation);
+
+          // Check geofence (10 meters) if anti-theft is active
+          if (antiTheftActive) {
+            const distance = calculateDistance(ownerLocation, bagLocation);
+            if (distance > 10) {
+              document.getElementById("status").innerText = "ALERT: Bag is more than 10 meters away!";
+              database.ref("alarmStatus").set("active"); // Trigger alarm in Arduino
+            } else {
+              document.getElementById("status").innerText = "Bag is within safe distance.";
+              database.ref("alarmStatus").set("inactive"); // Turn off alarm
+            }
+          }
+        }
+      });
+
+      // Listen for anti-theft status
+      database.ref("antiTheft").on("value", (snapshot) => {
+        antiTheftActive = snapshot.val() === true;
+        document.getElementById("antiTheftBtn").innerHTML = antiTheftActive
+          ? '<i class="fas fa-shield-alt"></i> Deactivate Anti-Theft'
+          : '<i class="fas fa-shield-alt"></i> Activate Anti-Theft';
+      });
+    }
+
+    // Calculate distance between two coordinates (in meters)
+    function calculateDistance(loc1, loc2) {
+      const R = 6371e3; // Earth radius in meters
+      const φ1 = (loc1.lat * Math.PI) / 180;
+      const φ2 = (loc2.lat * Math.PI) / 180;
+      const Δφ = ((loc2.lat - loc1.lat) * Math.PI) / 180;
+      const Δλ = ((loc2.lng - loc1.lng) * Math.PI) / 180;
+
+      const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      return R * c;
+    }
+
+    // Lock/Unlock buttons
+    document.getElementById("lockBtn").addEventListener("click", () => {
+      database.ref("lockStatus").set("locked");
+    });
+
+    document.getElementById("unlockBtn").addEventListener("click", () => {
+      database.ref("lockStatus").set("unlocked");
+    });
+
+    // Anti-theft button
+    document.getElementById("antiTheftBtn").addEventListener("click", () => {
+      const newStatus = !antiTheftActive;
+      database.ref("antiTheft").set(newStatus);
+      if (newStatus) {
+        // Set owner's current location as the reference point
+        navigator.geolocation.getCurrentPosition((position) => {
+          ownerLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          };
+          database.ref("ownerLocation").set(ownerLocation);
+        });
+      }
+    });
+
+    // Toggle slide menu
+    function toggleSlideMenu() {
+      const slideMenu = document.getElementById("slideMenu");
+      const overlay = document.getElementById("overlay");
+      slideMenu.classList.toggle("open");
+      overlay.classList.toggle("active");
+    }
+
+    // Show author info popup
+    function showAuthorInfo() {
+      toggleSlideMenu(); // Close slide menu
+      document.getElementById("authorInfoPopup").classList.add("active");
+      document.getElementById("overlay").classList.add("active");
+    }
+
+    // Show instructions popup
+    function showInstructions() {
+      toggleSlideMenu(); // Close slide menu
+      document.getElementById("instructionsPopup").classList.add("active");
+      document.getElementById("overlay").classList.add("active");
+    }
+
+    // Logout function
+    function logout() {
+      window.location.href = "index.html"; // Redirect to index.html
+    }
+
+    // Close popup
+    function closePopup(popupId) {
+      document.getElementById(popupId).classList.remove("active");
+      document.getElementById("overlay").classList.remove("active");
+    }
+
+    // Initialize map
+    initMap();
+  </script>
+</body>
+</html>
