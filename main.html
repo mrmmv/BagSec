@@ -6,7 +6,17 @@
   <title>Bag Security System</title>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCvxb2J5o_3F9IAm50OO7LsVzETGjNQClg&libraries=places"></script>
+  <!-- Load Google Maps API asynchronously -->
+  <script>
+    function loadScript() {
+      const script = document.createElement('script');
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyA2X4hfUB5e5bCV76Y5oJFEK1MWR-ESsZA&callback=initMap&libraries=places';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+    window.onload = loadScript;
+  </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     /* General Styles */
@@ -261,9 +271,6 @@
         padding: 10px 20px;
       }
 
-      #map, #street-view {
-        height: 200px;
-      }
 
       #status {
         font-size: 16px;
@@ -319,7 +326,6 @@
   <div class="container">
     <div class="map-container">
       <div id="map"></div>
-      <div id="street-view"></div>
     </div>
     <div class="button-container">
       <button id="lockBtn">
@@ -344,12 +350,12 @@
     // Firebase configuration
     const firebaseConfig = {
       apiKey: "AIzaSyAoqkAgvJvbxvzv3VTI947xLK2VV01Mj7I",
-  authDomain: "bagsec-b7850.firebaseapp.com",
-  databaseURL: "https://bagsec-b7850-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "bagsec-b7850",
-  storageBucket: "bagsec-b7850.firebasestorage.app",
-  messagingSenderId: "6655205519",
-  appId: "1:6655205519:web:8f8ed4c4a37f1304e8d0fa"
+      authDomain: "bagsec-b7850.firebaseapp.com",
+      databaseURL: "https://bagsec-b7850-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "bagsec-b7850",
+      storageBucket: "bagsec-b7850.firebasestorage.app",
+      messagingSenderId: "6655205519",
+      appId: "1:6655205519:web:8f8ed4c4a37f1304e8d0fa"
     };
 
     // Initialize Firebase
@@ -365,6 +371,7 @@
     let antiTheftActive = false; // Anti-theft status
 
     function initMap() {
+      console.log("Initializing map..."); // Debugging statement
       map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 0, lng: 0 },
         zoom: 15,
@@ -386,27 +393,32 @@
       });
 
       // Listen for changes in Firebase for bag location
-      database.ref("bagLocation").on("value", (snapshot) => {
-        const location = snapshot.val();
-        if (location) {
-          bagLocation = { lat: location.lat, lng: location.lng };
-          marker.setPosition(bagLocation);
-          map.setCenter(bagLocation);
-          streetView.setPosition(bagLocation);
+database.ref("bagLocation").on("value", (snapshot) => {
+  const location = snapshot.val();
+  if (location) {
+    // Validate lat and lng values
+    if (typeof location.lat === "number" && typeof location.lng === "number") {
+      bagLocation = { lat: location.lat, lng: location.lng };
+      marker.setPosition(bagLocation);
+      map.setCenter(bagLocation);
+      streetView.setPosition(bagLocation);
 
-          // Check geofence (10 meters) if anti-theft is active
-          if (antiTheftActive) {
-            const distance = calculateDistance(ownerLocation, bagLocation);
-            if (distance > 10) {
-              document.getElementById("status").innerText = "ALERT: Bag is more than 10 meters away!";
-              database.ref("alarmStatus").set("active"); // Trigger alarm in Arduino
-            } else {
-              document.getElementById("status").innerText = "Bag is within safe distance.";
-              database.ref("alarmStatus").set("inactive"); // Turn off alarm
-            }
-          }
+      // Check geofence (10 meters) if anti-theft is active
+      if (antiTheftActive) {
+        const distance = calculateDistance(ownerLocation, bagLocation);
+        if (distance > 10) {
+          document.getElementById("status").innerText = "ALERT: Bag is more than 10 meters away!";
+          database.ref("alarmStatus").set("active"); // Trigger alarm in Arduino
+        } else {
+          document.getElementById("status").innerText = "Bag is within safe distance.";
+          database.ref("alarmStatus").set("inactive"); // Turn off alarm
         }
-      });
+      }
+    } else {
+      console.error("Invalid location data:", location);
+    }
+  }
+});
 
       // Listen for anti-theft status
       database.ref("antiTheft").on("value", (snapshot) => {
@@ -490,9 +502,6 @@
       document.getElementById(popupId).classList.remove("active");
       document.getElementById("overlay").classList.remove("active");
     }
-
-    // Initialize map
-    initMap();
   </script>
 </body>
 </html>
